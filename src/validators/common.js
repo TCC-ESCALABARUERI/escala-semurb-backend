@@ -18,3 +18,11 @@ export const withConfirmation = (schema, field, confirmField) =>
     message: 'As senhas não coincidem',
     path: [confirmField]
   })
+
+export const isoDate = z.iso.date({ message: 'Data deve estar no formato AAAA-MM-DD' })
+export const hhmm = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Horário deve estar no formato HH:MM')
+export const optionalId = z.coerce.number().int().positive().optional()
+export const registrationParam = z.object({ registration })
+export const name = z.string().trim().min(2).max(120)

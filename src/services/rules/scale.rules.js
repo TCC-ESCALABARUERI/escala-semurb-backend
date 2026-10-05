@@ -107,3 +107,76 @@ export function isWorkingOn(scale, date) {
   const position = Math.round((target - start) / DAY_MS) % cycle
   return position < scale.workDay
 }
+
+// ---------------------------------------------------------------------------
+// Resolução do dia: quem vence quando há mais de uma regra para a mesma data?
+// Do mais específico para o mais geral (como exceções num calendário):
+//   1. Dia específico do funcionário (atestado, hora extra...)
+//   2. Feriado (por padrão só para escala semanal)
+//   3. Escala base (ciclo ou folgas fixas)
+// ---------------------------------------------------------------------------
+
+export const OCCASION_TYPES = [
+  'Hora extra',
+  'Atestado',
+  'Falta',
+  'Folga',
+  'Alteração de turno',
+  'Outro'
+]
+
+// 'work' = trabalha, 'off' = não trabalha, null = só anotação
+export const OCCASION_EFFECT = {
+  'Hora extra': 'work',
+  'Alteração de turno': 'work',
+  Atestado: 'off',
+  Falta: 'off',
+  Folga: 'off',
+  Outro: null
+}
+
+// Política de feriado: para mudar no futuro, troque esta função.
+export const holidayAppliesTo = scale => isWeeklyScale(scale)
+
+export function isWeeklyScale(scale) {
+  const parsed = parseScaleType(scale.scaleType)
+  return parsed.unit === 'days' && parsed.cycleDays === 7
+}
+
+/**
+ * @returns {{ working: boolean, reason: string }}
+ */
+export function resolveDuty({ scale, date, holiday = null, occasion = null }) {
+  const effect = occasion ? OCCASION_EFFECT[occasion.type] : null
+  if (effect) return { working: effect === 'work', reason: occasion.type }
+
+  if (!scale) return { working: false, reason: 'Sem escala' }
+  if (toUtcDay(date) < toUtcDay(scale.startDate)) {
+    return { working: false, reason: 'Escala ainda não iniciada' }
+  }
+  if (holiday && holidayAppliesTo(scale))
+    return { working: false, reason: `Feriado: ${holiday.name}` }
+
+  return isWorkingOn(scale, date)
+    ? { working: true, reason: 'Escala' }
+    : { working: false, reason: 'Folga da escala' }
+}
+
+// ---------------------------------------------------------------------------
+// Turno: calcula a duração líquida, aceitando virada de dia (ex.: 22:00 → 06:00)
+// ---------------------------------------------------------------------------
+
+const toMinutes = hhmm => {
+  const [h, m] = String(hhmm).split(':').map(Number)
+  return h * 60 + m
+}
+const toHHMM = minutes =>
+  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+
+export function calculateShift({ shiftStart, shiftEnd, shiftPause = '00:00' }) {
+  let gross = toMinutes(shiftEnd) - toMinutes(shiftStart)
+  if (gross <= 0) gross += 24 * 60 // turno que vira a noite
+  const net = gross - toMinutes(shiftPause)
+  if (net <= 0) throw badRequest('O intervalo não pode ser maior ou igual à duração do turno')
+  return { shiftStart, shiftEnd, shiftPause, totalShift: toHHMM(net) }
+}

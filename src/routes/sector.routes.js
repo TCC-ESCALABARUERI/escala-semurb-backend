@@ -3,7 +3,7 @@ import * as SectorController from '../controllers/sector.controller.js'
 import { authorize } from '../middlewares/auth.js'
 import { validate } from '../middlewares/validate.js'
 import { idParam } from '../validators/common.js'
-import { sectorBody } from '../validators/sector.validator.js'
+import { nameBody as sectorBody } from '../validators/structure.validator.js'
 import { ROLES } from '../utils/token.js'
 
 const router = Router()

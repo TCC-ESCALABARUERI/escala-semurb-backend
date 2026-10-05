@@ -66,3 +66,72 @@ test('isWorkingOn: 5x2 com folgas fixas ignora o ciclo', () => {
   assert.equal(isWorkingOn(scale, '2026-10-05'), true) // segunda
   assert.equal(isWorkingOn(scale, new Date('2026-10-09T23:30:00-03:00')), true) // sexta 23:30 em SP (já é sábado em UTC)
 })
+
+import { resolveDuty, calculateShift } from '../src/services/rules/scale.rules.js'
+
+test('resolveDuty: dia específico vence escala e feriado', () => {
+  const weekly = {
+    startDate: '2026-10-01',
+    scaleType: '5x2',
+    workDay: 5,
+    unworkDay: 2,
+    unworkScale: ['Dom', 'Sab']
+  }
+  const holiday = { name: 'Dia das Crianças' }
+  // 12/10/2026 é segunda
+  assert.deepEqual(resolveDuty({ scale: weekly, date: '2026-10-12' }), {
+    working: true,
+    reason: 'Escala'
+  })
+  assert.equal(resolveDuty({ scale: weekly, date: '2026-10-12', holiday }).working, false)
+  assert.equal(
+    resolveDuty({ scale: weekly, date: '2026-10-12', holiday, occasion: { type: 'Hora extra' } })
+      .working,
+    true
+  )
+  assert.equal(
+    resolveDuty({ scale: weekly, date: '2026-10-13', occasion: { type: 'Atestado' } }).working,
+    false
+  )
+  assert.deepEqual(
+    resolveDuty({ scale: weekly, date: '2026-10-13', occasion: { type: 'Outro' } }),
+    { working: true, reason: 'Escala' }
+  )
+  assert.equal(
+    resolveDuty({ scale: weekly, date: '2026-10-11', occasion: { type: 'Hora extra' } }).working,
+    true
+  ) // domingo
+})
+
+test('resolveDuty: feriado não afeta escala por ciclo (12x36)', () => {
+  const cycle = {
+    startDate: '2026-10-12',
+    scaleType: '12x36',
+    workDay: 1,
+    unworkDay: 1,
+    unworkScale: null
+  }
+  assert.equal(
+    resolveDuty({ scale: cycle, date: '2026-10-12', holiday: { name: 'X' } }).working,
+    true
+  )
+  assert.equal(resolveDuty({ scale: null, date: '2026-10-12' }).reason, 'Sem escala')
+  assert.equal(
+    resolveDuty({ scale: cycle, date: '2026-10-01' }).reason,
+    'Escala ainda não iniciada'
+  )
+})
+
+test('calculateShift: duração líquida e virada de dia', () => {
+  assert.equal(
+    calculateShift({ shiftStart: '08:00', shiftEnd: '17:00', shiftPause: '01:00' }).totalShift,
+    '08:00'
+  )
+  assert.equal(
+    calculateShift({ shiftStart: '19:00', shiftEnd: '07:00', shiftPause: '01:00' }).totalShift,
+    '11:00'
+  )
+  assert.throws(() =>
+    calculateShift({ shiftStart: '08:00', shiftEnd: '09:00', shiftPause: '01:00' })
+  )
+})

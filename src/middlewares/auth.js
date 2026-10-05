@@ -1,20 +1,32 @@
 import { verifyToken } from '../utils/token.js'
-import { unauthorized, forbidden } from '../utils/AppError.js'
+import { unauthorized, forbidden, AppError } from '../utils/AppError.js'
+
+// Rotas liberadas enquanto a senha inicial não for trocada
+const ALLOWED_BEFORE_PASSWORD_CHANGE = ['GET /api/me', 'PATCH /api/me/password']
 
 // Autenticação: valida o token e expõe req.user = { registration, role, sectorId }
 export function authenticate(req, _res, next) {
   const [scheme, token] = (req.headers.authorization || '').split(' ')
   if (scheme !== 'Bearer' || !token) throw unauthorized('Token não informado')
 
+  let payload
   try {
-    const payload = verifyToken(token, 'access')
-    req.user = {
-      registration: payload.role === 'master' ? null : Number(payload.sub),
-      role: payload.role,
-      sectorId: payload.sectorId
-    }
+    payload = verifyToken(token, 'access')
   } catch {
     throw unauthorized('Token inválido ou expirado')
+  }
+
+  req.user = {
+    registration: payload.role === 'master' ? null : Number(payload.sub),
+    role: payload.role,
+    sectorId: payload.sectorId
+  }
+
+  const route = `${req.method} ${(req.baseUrl + req.path).replace(/\/$/, '')}`
+  if (payload.mcp && !ALLOWED_BEFORE_PASSWORD_CHANGE.includes(route)) {
+    throw new AppError(403, 'Troque a senha inicial antes de continuar', {
+      code: 'PASSWORD_CHANGE_REQUIRED'
+    })
   }
   next()
 }

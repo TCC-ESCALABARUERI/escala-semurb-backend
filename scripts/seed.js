@@ -42,5 +42,18 @@ await sql.begin(async tx => {
   ])}`
 })
 
+// Feriados nacionais de 2026 (exemplo)
+await sql`insert into holiday ${sql([
+  { day: '2026-01-01', name: 'Confraternização Universal' },
+  { day: '2026-04-21', name: 'Tiradentes' },
+  { day: '2026-05-01', name: 'Dia do Trabalho' },
+  { day: '2026-09-07', name: 'Independência do Brasil' },
+  { day: '2026-10-12', name: 'Nossa Senhora Aparecida' },
+  { day: '2026-11-02', name: 'Finados' },
+  { day: '2026-11-15', name: 'Proclamação da República' },
+  { day: '2026-11-20', name: 'Dia da Consciência Negra' },
+  { day: '2026-12-25', name: 'Natal' }
+])} on conflict (day) do nothing`
+
 console.log('Seed aplicado. Logins: 10001 (admin) e 20001 (funcionário), senha Semurb@123')
 await sql.end()

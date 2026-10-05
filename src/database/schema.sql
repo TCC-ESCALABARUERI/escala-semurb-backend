@@ -52,8 +52,7 @@ create table scale (
   scale_type    text not null check (scale_type ~ '^\d{1,2}x\d{1,2}$'),
   work_day      int  not null check (work_day > 0),
   unwork_day    int  not null check (unwork_day > 0),
-  unwork_scale  text[],
-  use_occasions boolean not null default false,
+  unwork_scale  text[],                      -- folgas fixas (só escala semanal)
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
   check (
@@ -142,18 +141,36 @@ create table validation (
 );
 create index index_expires on validation(expires_at);
 
--- ---------- Dias específicos (ocorrências por funcionário) ----------
+-- ---------- Dias específicos (exceções individuais na escala) ----------
 
+-- Exceção pontual de UM funcionário em UM dia. O tipo define o efeito:
+--   Hora extra / Alteração de turno → trabalha (mesmo se for folga)
+--   Atestado / Falta / Folga        → não trabalha
+--   Outro                           → só anotação, não altera a escala
 create table occasion (
   id            serial primary key,
-  registration  int not null references employee(registration) on delete cascade,
-  title         text not null,
+  registration  int  not null references employee(registration) on delete cascade,
   day           date not null,
-  description   text not null,
+  type          text not null check (type in ('Hora extra','Atestado','Falta','Folga','Alteração de turno','Outro')),
+  description   text,
+  start_time    time,
+  end_time      time,
+  responsible   int references employee(registration) on delete set null,
   created_at    timestamptz not null default now(),
-  unique (registration, day)
+  unique (registration, day),
+  check ((start_time is null) = (end_time is null))
 );
-create index index_occasion on occasion(registration);
+create index index_occasion on occasion(registration, day);
+
+-- ---------- Feriados ----------
+
+-- Por padrão só dão folga para escalas semanais (regra em scale.rules.js)
+create table holiday (
+  id          serial primary key,
+  day         date not null unique,
+  name        text not null,
+  created_at  timestamptz not null default now()
+);
 
 -- ---------- Foto de perfil ----------
 

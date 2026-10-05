@@ -1,5 +1,6 @@
 import * as MeService from '../services/me.service.js'
 import * as AuthService from '../services/auth.service.js'
+import * as OccasionService from '../services/occasion.service.js'
 
 export async function show(req, res) {
   res.json(await MeService.getProfile(req.user))
@@ -10,8 +11,8 @@ export async function update(req, res) {
 }
 
 export async function changePassword(req, res) {
-  await AuthService.changePassword(req.user.registration, req.valid.body)
-  res.json({ message: 'Senha alterada com sucesso' })
+  const session = await AuthService.changePassword(req.user.registration, req.valid.body)
+  res.json({ message: 'Senha alterada com sucesso', ...session })
 }
 
 export async function confirmScale(req, res) {
@@ -49,4 +50,8 @@ export async function photo(req, res) {
 export async function removePhoto(req, res) {
   await MeService.removePhoto(req.user.registration)
   res.status(204).end()
+}
+
+export async function occasions(req, res) {
+  res.json(await OccasionService.listMine(req.user.registration, req.valid.query))
 }

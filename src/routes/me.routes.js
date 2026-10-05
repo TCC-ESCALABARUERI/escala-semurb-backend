@@ -9,6 +9,7 @@ import {
   changePasswordSchema,
   notificationsQuery
 } from '../validators/me.validator.js'
+import { periodQuery } from '../validators/employee.validator.js'
 import { ROLES } from '../utils/token.js'
 
 const router = Router()
@@ -28,6 +29,8 @@ router.patch(
   validate({ params: idParam }),
   MeController.readNotification
 )
+
+router.get('/occasions', validate({ query: periodQuery }), MeController.occasions)
 
 router.get('/photo', MeController.photo)
 router.put('/photo', uploadImage, MeController.uploadPhoto)

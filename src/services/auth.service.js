@@ -33,15 +33,15 @@ export async function login({ registration, password }) {
     throw unauthorized('Credenciais inválidas')
   }
 
-  const role = credentials.isAdmin ? ROLES.ADMIN : ROLES.EMPLOYEE
+  return buildSession(credentials)
+}
+
+function buildSession({ registration, isAdmin, sectorId, mustChangePassword }) {
+  const role = isAdmin ? ROLES.ADMIN : ROLES.EMPLOYEE
   return {
-    token: signAccessToken({
-      registration: credentials.registration,
-      role,
-      sectorId: credentials.sectorId
-    }),
+    token: signAccessToken({ registration, role, sectorId, mustChangePassword }),
     role,
-    mustChangePassword: credentials.mustChangePassword
+    mustChangePassword
   }
 }
 
@@ -90,7 +90,7 @@ export async function resetPassword({ resetToken, password }) {
   await Employee.updatePassword(Number(payload.sub), await hashPassword(password))
 }
 
-/** Troca de senha logado: exige a senha atual. */
+/** Troca de senha logado: exige a senha atual e devolve um token novo (já sem a trava). */
 export async function changePassword(registration, { currentPassword, newPassword }) {
   const credentials = await Employee.findCredentials(registration)
   if (!credentials || !(await comparePassword(currentPassword, credentials.password))) {
@@ -101,4 +101,5 @@ export async function changePassword(registration, { currentPassword, newPasswor
     await Employee.updatePassword(registration, await hashPassword(newPassword), tx)
     await Validation.removeByRegistration(registration, tx)
   })
+  return buildSession({ ...credentials, mustChangePassword: false })
 }

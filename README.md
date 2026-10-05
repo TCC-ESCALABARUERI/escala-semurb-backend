@@ -69,35 +69,52 @@ npm test
 
 ## Endpoints (prefixo `/api`)
 
-| Método | Rota | Perfil |
+Perfis: **M** = master · **A** = admin (só o próprio setor) · **F** = funcionário.
+
+| Método | Rota | Perfis |
 |---|---|---|
 | GET | `/health` | público |
 | POST | `/auth/login` | público |
-| POST | `/auth/password/forgot` · `/verify` · `/reset` | público |
-| GET · PATCH | `/me` | todos · admin/employee |
-| PATCH | `/me/password` | admin/employee |
-| POST | `/me/scale/confirm` | admin/employee |
-| GET | `/me/notifications?unread=true` | admin/employee |
-| PATCH | `/me/notifications/:id/read` · `/me/notifications/read-all` | admin/employee |
-| GET · PUT · DELETE | `/me/photo` | admin/employee |
-| GET | `/sectors` · `/sectors/:id` | master/admin |
-| POST · PATCH · DELETE | `/sectors` · `/sectors/:id` | master |
+| POST | `/auth/password/forgot` · `/auth/password/verify` · `/auth/password/reset` | público |
+| GET | `/me` | M A F |
+| PATCH | `/me` · `/me/password` | A F |
+| POST | `/me/scale/confirm` | A F |
+| GET | `/me/notifications?unread=true` · `/me/occasions?from&to` | A F |
+| PATCH | `/me/notifications/:id/read` · `/me/notifications/read-all` | A F |
+| GET · PUT · DELETE | `/me/photo` | A F |
+| GET | `/sectors` · `/sectors/:id` | M A |
+| POST · PATCH · DELETE | `/sectors` · `/sectors/:id` | M |
+| GET · POST | `/teams?sectorId` | M A |
+| GET · PATCH · DELETE | `/teams/:id` | M A |
+| GET · POST | `/regions` | M A |
+| PATCH · DELETE | `/regions/:id` | M |
+| GET · POST | `/employees?sectorId&teamId&regionId&search` | M A |
+| GET · PATCH | `/employees/:registration` | M A |
+| DELETE | `/employees/:registration` | M |
+| POST | `/employees/:registration/password-reset` | M A |
+| PUT | `/employees/:registration/scale` · `/employees/:registration/shift` | M A |
+| GET · POST | `/employees/:registration/occasions` | M A |
+| GET | `/employees/on-duty?date=AAAA-MM-DD&teamId` | M A |
+| GET | `/occasions?from&to&type` · DELETE `/occasions/:id` | M A |
+| GET | `/confirmations?status=Pendente` · POST `/confirmations/remind` | M A |
+| GET | `/holidays?year` | M A F |
+| POST · DELETE | `/holidays` · `/holidays/:id` | M |
+| GET | `/dashboard/employees-by-sector` | M |
+| GET | `/dashboard/employees-by-scale` | M A |
 
-### Em migração (v1 → v2)
+**Pendente:** relatórios em PDF (`/reports/...`). O mapa completo rota antiga → rota nova para o frontend fica em `docs/` ao final da migração.
 
-| v1 | v2 planejado |
-|---|---|
-| `cadastrarFuncionario(_master)`, `listarFuncionarios_master`, `funcionariosSetor`, `editarFuncionario(_master)`, `deletarFuncionario_master` | `GET/POST /employees`, `GET/PATCH/DELETE /employees/:registration` |
-| `cadastrarEscala(_master)`, `alterarEscala(_master)`, `escalasSetor`, `listarEscalas_master` | `PUT /employees/:registration/scale`, `GET /scales` |
-| `cadastrarTurno(_master)`, `alterarTurno(_master)`, `turnosSetor`, `listarTurnos_master` | `PUT /employees/:registration/shift`, `GET /shifts` |
-| `cadastrarEquipe`, `equipesSetor`, `listarEquipes_master`, `funcionariosEquipe` | `GET/POST /teams`, `PATCH/DELETE /teams/:id` |
-| `listarRegioes_master`, `regiaoSetor` | `GET/POST /regions` |
-| `cadastrarDiaEspecifico(_master)`, `diasEspecificos` | `POST /employees/:registration/occasions`, `GET /occasions?from&to` |
-| `funcionariosAtivosSetor` | `GET /employees/on-duty?date=YYYY-MM-DD` |
-| `confirmacoesSetor`, `notificarFaltamConfirmar` | `GET /confirmations?status=Pendente`, `POST /confirmations/remind` |
-| `contabilizarFuncionariosSetor`, `funcionariosEscala` | `GET /dashboard/employees-by-sector`, `/dashboard/employees-by-scale` |
-| `relatorioGeralSetor`, `relatorioPorEquipe`, `relatorioPorFuncionario` | `GET /reports/sector`, `/reports/teams/:id`, `/reports/employees/:registration` (`?month&year`) |
-| `adicionarFeriados_master`, `listarFeriados_master`, `deletarFeriado_master` | a definir |
+### Primeiro acesso
+
+Funcionário criado recebe senha = matrícula e `mustChangePassword: true`. Até trocar (`PATCH /me/password`, que devolve um token novo), o token só acessa `GET /me` e a troca de senha; o resto responde `403` com `details.code = PASSWORD_CHANGE_REQUIRED`.
+
+### Dias específicos e feriados
+
+Ordem de prioridade para saber se alguém trabalha num dia (da exceção mais específica para a regra geral):
+
+1. **Dia específico** do funcionário: `Hora extra` e `Alteração de turno` → trabalha; `Atestado`, `Falta` e `Folga` → não trabalha; `Outro` → só anotação.
+2. **Feriado**: folga apenas para escalas semanais (ex.: 5x2). A política fica em `holidayAppliesTo()` em `scale.rules.js`.
+3. **Escala base**: ciclo NxM ou folgas fixas.
 
 ## Deploy
 

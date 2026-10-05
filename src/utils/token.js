@@ -4,8 +4,21 @@ import { env } from '../config/env.js'
 export const ROLES = Object.freeze({ MASTER: 'master', ADMIN: 'admin', EMPLOYEE: 'employee' })
 
 // Token de acesso: quem é (sub), o que pode (role) e de qual setor (sectorId)
-export function signAccessToken({ registration, role, sectorId = null }) {
-  return jwt.sign({ sub: String(registration), role, sectorId, purpose: 'access' }, env.jwtSecret, {
+// mustChangePassword: enquanto true, o token só acessa GET /me e PATCH /me/password
+export function signAccessToken({
+  registration,
+  role,
+  sectorId = null,
+  mustChangePassword = false
+}) {
+  const payload = {
+    sub: String(registration),
+    role,
+    sectorId,
+    mcp: mustChangePassword,
+    purpose: 'access'
+  }
+  return jwt.sign(payload, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn
   })
 }
