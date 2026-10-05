@@ -1,0 +1,63 @@
+# Testes rápidos da API — extensão "REST Client" do VS Code (Send Request acima de cada bloco)
+@base = http://localhost:3000/api
+
+### Saúde
+GET {{base}}/health
+
+### Login (admin do seed)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "registration": 10001, "password": "Semurb@123" }
+
+###
+@token = {{login.response.body.token}}
+
+### Meu perfil
+GET {{base}}/me
+Authorization: Bearer {{token}}
+
+### Funcionários do setor
+GET {{base}}/employees
+Authorization: Bearer {{token}}
+
+### Cadastrar funcionário
+POST {{base}}/employees
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "registration": 20002, "name": "Novo Fiscal", "email": "novo@semurb.dev", "phone": "11999990010", "teamId": 2 }
+
+### Definir escala 5x2 com folga sábado/domingo
+PUT {{base}}/employees/20001/scale
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "startDate": "2026-10-01", "scaleType": "5x2", "weeklyDaysOff": ["Sab", "Dom"] }
+
+### Definir turno
+PUT {{base}}/employees/20001/shift
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "shiftStart": "08:00", "shiftEnd": "17:00", "shiftPause": "01:00" }
+
+### Registrar dia específico
+POST {{base}}/employees/20001/occasions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "day": "2026-10-20", "type": "Atestado", "description": "Consulta" }
+
+### Quem trabalha no dia
+GET {{base}}/employees/on-duty?date=2026-10-12
+Authorization: Bearer {{token}}
+
+### Calendário do mês de um funcionário
+GET {{base}}/employees/20001/schedule?year=2026&month=10
+Authorization: Bearer {{token}}
+
+### Relatório do setor (PDF)
+GET {{base}}/reports/sector?year=2026&month=10
+Authorization: Bearer {{token}}
