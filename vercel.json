@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "node_modules/pdfkit/js/data/**"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}
