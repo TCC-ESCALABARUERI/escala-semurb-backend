@@ -10,7 +10,9 @@
     "db:schema": "node scripts/apply-schema.js",
     "hash": "node scripts/hash-password.js",
     "format": "prettier --write .",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "db:check": "node scripts/check-db.js",
+    "format:check": "prettier --check \"src/**/*.js\" \"tests/**/*.js\""
   },
   "license": "ISC",
   "dependencies": {

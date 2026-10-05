@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import * as EmployeeController from '../controllers/employee.controller.js'
+import * as ReportController from '../controllers/report.controller.js'
 import { authorize } from '../middlewares/auth.js'
 import { validate } from '../middlewares/validate.js'
-import { registrationParam } from '../validators/common.js'
+import { registrationParam, monthQuery } from '../validators/common.js'
 import * as v from '../validators/employee.validator.js'
 import { ROLES } from '../utils/token.js'
 
@@ -41,6 +42,11 @@ router.put(
   EmployeeController.setShift
 )
 
+router.get(
+  '/:registration/schedule',
+  validate({ ...byReg, query: monthQuery }),
+  ReportController.employeeSchedule
+)
 router.get(
   '/:registration/occasions',
   validate({ ...byReg, query: v.periodQuery }),

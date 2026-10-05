@@ -135,3 +135,34 @@ test('calculateShift: duração líquida e virada de dia', () => {
     calculateShift({ shiftStart: '08:00', shiftEnd: '09:00', shiftPause: '01:00' })
   )
 })
+
+import { buildMonthSchedule, monthDays } from '../src/services/rules/scale.rules.js'
+
+test('monthDays: fevereiro bissexto e mês de 31 dias', () => {
+  assert.equal(monthDays(2028, 2).length, 29)
+  assert.equal(monthDays(2026, 10).at(-1), '2026-10-31')
+})
+
+test('buildMonthSchedule: 5x2 em outubro/2026 com feriado e atestado', () => {
+  const scale = {
+    startDate: '2026-10-01',
+    scaleType: '5x2',
+    workDay: 5,
+    unworkDay: 2,
+    unworkScale: ['Dom', 'Sab']
+  }
+  const shift = { shiftStart: '08:00:00', shiftEnd: '17:00:00' }
+  const result = buildMonthSchedule({
+    scale,
+    shift,
+    year: 2026,
+    month: 10,
+    holidays: [{ day: '2026-10-12', name: 'Nossa Senhora Aparecida' }],
+    occasions: [{ day: '2026-10-13', type: 'Atestado', description: null }]
+  })
+  // outubro/2026: 22 dias úteis − feriado − atestado = 20
+  assert.equal(result.summary.workingDays, 20)
+  assert.equal(result.days[0].hours.start, '08:00')
+  assert.equal(result.days[11].reason, 'Feriado: Nossa Senhora Aparecida')
+  assert.equal(result.days[12].reason, 'Atestado')
+})

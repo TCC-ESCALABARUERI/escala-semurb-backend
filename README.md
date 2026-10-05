@@ -26,6 +26,7 @@ requisição → routes → middlewares (auth, validate) → controller → serv
 | `services/` | regras de negócio, transações, orquestração entre models | conhecer `req`/`res` |
 | `services/rules/` | regras puras (cálculo de escala) | fazer I/O |
 | `models/` | SQL de uma tabela/agregado | decidir regra |
+| `views/` | layout dos relatórios em PDF (a "View" do MVC; o resto responde JSON) | buscar dados |
 
 ```
 src/
@@ -33,10 +34,14 @@ src/
 ├── server.js            # sobe o servidor local
 ├── config/env.js        # variáveis de ambiente validadas
 ├── database/            # conexão e schema.sql
+├── database/migrations/ # alterações para bancos já existentes
 ├── models/  services/  controllers/  routes/  validators/  middlewares/  utils/
+└── views/reports/       # PDFs (PDFKit)
 api/index.js             # entrada serverless (Vercel)
-scripts/                 # apply-schema, seed, hash-password
-tests/                   # node --test
+scripts/                 # apply-schema, seed, check-db, hash-password
+tests/                   # node --test (regras de escala)
+docs/                    # guia de migração de rotas v1→v2 e api.http (REST Client)
+.github/workflows/ci.yml # testes + prettier a cada push
 ```
 
 ## Perfis
@@ -62,10 +67,15 @@ cp .env.example .env          # preencha DATABASE_URL e JWT_SECRET
 npm install
 npm run db:schema             # cria as tabelas (banco vazio)
 npm run db:seed               # dados de exemplo (opcional)
+npm run db:check              # confere se o banco está com o schema atual
 npm run hash -- "senhaMaster" # cole o resultado em MASTER_PASSWORD_HASH
 npm run dev
 npm test
 ```
+
+Para testar as rotas pelo VS Code, abra `docs/api.http` com a extensão **REST Client**.
+
+Usuários do seed (apenas desenvolvimento): `10001` (admin) e `20001` (funcionário), senha `Semurb@123`.
 
 ## Endpoints (prefixo `/api`)
 
@@ -101,8 +111,11 @@ Perfis: **M** = master · **A** = admin (só o próprio setor) · **F** = funcio
 | POST · DELETE | `/holidays` · `/holidays/:id` | M |
 | GET | `/dashboard/employees-by-sector` | M |
 | GET | `/dashboard/employees-by-scale` | M A |
+| GET | `/me/schedule?year&month` (JSON) · `/me/report?year&month` (PDF) | A F |
+| GET | `/employees/:registration/schedule?year&month` | M A |
+| GET | `/reports/sector?year&month&sectorId` · `/reports/teams/:id` · `/reports/employees/:registration` (PDF) | M A |
 
-**Pendente:** relatórios em PDF (`/reports/...`). O mapa completo rota antiga → rota nova para o frontend fica em `docs/` ao final da migração.
+Migração do frontend v1 → v2: [`docs/MIGRACAO-ROTAS.md`](docs/MIGRACAO-ROTAS.md).
 
 ### Primeiro acesso
 
@@ -118,5 +131,22 @@ Ordem de prioridade para saber se alguém trabalha num dia (da exceção mais es
 
 ## Deploy
 
-- Banco: [Neon](https://neon.com) (Free: não apaga dados por inatividade). Use a connection string *pooled*.
-- API: Vercel (`api/index.js` + `vercel.json`) com `DB_MAX_CONNECTIONS=1`.
+**Banco — [Neon](https://neon.com)** (Free: 1 GB, não apaga dados por inatividade; dorme após 5 min sem uso). Região AWS São Paulo, connection string *pooled* (`-pooler` no host). Bancos criados antes de 05/10/2026: rodar `src/database/migrations/001_occasion_holiday.sql`.
+
+**API — [Vercel](https://vercel.com)**
+
+1. Importe o repositório na Vercel (Framework preset: **Other**; sem build command).
+2. Em *Settings → Environment Variables*, cadastre: `NODE_ENV=production`, `DATABASE_URL`, `DB_MAX_CONNECTIONS=1`, `JWT_SECRET` (novo, diferente do local), `MASTER_REGISTRATION`, `MASTER_PASSWORD_HASH`, `CORS_ORIGIN` (URL do frontend) e, se houver, as variáveis `SMTP_*`.
+3. Deploy. Teste em `https://<projeto>.vercel.app/api/health`.
+
+`api/index.js` exporta o app sem `listen()`; `vercel.json` redireciona tudo para ele e inclui as fontes do PDFKit no pacote da função.
+
+Em produção, não rode o seed com senhas conhecidas. Para demonstração no portfólio, crie um usuário de demo pelo master e troque a senha dele.
+
+## Decisões técnicas
+
+- **Supabase → Postgres puro (Neon):** o Supabase Free pausa projetos parados há 7 dias; o código só usava o Supabase como banco, então `postgres.js` com SQL direto removeu a dependência e permitiu transações.
+- **Escopo pelo token:** no v1 a matrícula do ADM vinha na URL e qualquer usuário logado acessava qualquer rota. Agora papel e setor vêm do JWT.
+- **Redefinição de senha:** código de uso único, guardado como hash, com limite de tentativas e expiração de 5 min; a resposta não revela se o e-mail existe.
+- **Regras de escala como funções puras** (`services/rules/scale.rules.js`), cobertas por testes, sem banco nem HTTP.
+- **Datas como dia de calendário em `America/Sao_Paulo`**, evitando que o dia da semana mude conforme o fuso do servidor.

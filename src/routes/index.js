@@ -5,6 +5,7 @@ import authRoutes from './auth.routes.js'
 import meRoutes from './me.routes.js'
 import sectorRoutes from './sector.routes.js'
 import employeeRoutes from './employee.routes.js'
+import reportRoutes from './report.routes.js'
 import {
   teamRoutes,
   regionRoutes,
@@ -33,7 +34,8 @@ const privateRoutes = {
   '/holidays': holidayRoutes,
   '/occasions': occasionRoutes,
   '/confirmations': confirmationRoutes,
-  '/dashboard': dashboardRoutes
+  '/dashboard': dashboardRoutes,
+  '/reports': reportRoutes
 }
 for (const [path, routes] of Object.entries(privateRoutes)) router.use(path, authenticate, routes)
 

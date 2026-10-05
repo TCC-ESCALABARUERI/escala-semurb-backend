@@ -20,3 +20,6 @@ export async function remove(id, db = sql) {
   const result = await db`delete from holiday where id = ${id}`
   return result.count > 0
 }
+
+export const findBetween = (from, to, db = sql) =>
+  db`select id, day, name from holiday where day between ${from} and ${to} order by day`

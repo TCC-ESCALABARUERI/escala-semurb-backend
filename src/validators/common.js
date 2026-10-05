@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+// Mensagens de validação em português
+z.config(z.locales.pt())
+
 export const registration = z.coerce
   .number()
   .int()
@@ -26,3 +29,16 @@ export const hhmm = z
 export const optionalId = z.coerce.number().int().positive().optional()
 export const registrationParam = z.object({ registration })
 export const name = z.string().trim().min(2).max(120)
+
+// Mês/ano de referência; padrão = mês atual em São Paulo
+const [currentYear, currentMonth] = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Sao_Paulo'
+})
+  .format(new Date())
+  .split('-')
+  .map(Number)
+export const monthQuery = z.object({
+  year: z.coerce.number().int().min(2000).max(2100).default(currentYear),
+  month: z.coerce.number().int().min(1).max(12).default(currentMonth),
+  sectorId: optionalId
+})

@@ -10,6 +10,8 @@ import {
   notificationsQuery
 } from '../validators/me.validator.js'
 import { periodQuery } from '../validators/employee.validator.js'
+import { monthQuery } from '../validators/common.js'
+import * as ReportController from '../controllers/report.controller.js'
 import { ROLES } from '../utils/token.js'
 
 const router = Router()
@@ -31,6 +33,9 @@ router.patch(
 )
 
 router.get('/occasions', validate({ query: periodQuery }), MeController.occasions)
+
+router.get('/schedule', validate({ query: monthQuery }), ReportController.mySchedule)
+router.get('/report', validate({ query: monthQuery }), ReportController.myReport)
 
 router.get('/photo', MeController.photo)
 router.put('/photo', uploadImage, MeController.uploadPhoto)

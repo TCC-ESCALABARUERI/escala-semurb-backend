@@ -180,3 +180,60 @@ export function calculateShift({ shiftStart, shiftEnd, shiftPause = '00:00' }) {
   if (net <= 0) throw badRequest('O intervalo não pode ser maior ou igual à duração do turno')
   return { shiftStart, shiftEnd, shiftPause, totalShift: toHHMM(net) }
 }
+
+// ---------------------------------------------------------------------------
+// Calendário do mês: aplica resolveDuty em cada dia
+// ---------------------------------------------------------------------------
+
+/** Dias 'YYYY-MM-DD' de um mês (month 1–12) */
+export function monthDays(year, month) {
+  const total = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  return Array.from(
+    { length: total },
+    (_, i) => `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`
+  )
+}
+
+export function buildMonthSchedule({
+  scale,
+  shift = null,
+  year,
+  month,
+  holidays = [],
+  occasions = []
+}) {
+  const holidayByDay = new Map(holidays.map(h => [h.day, h]))
+  const occasionByDay = new Map(occasions.map(o => [o.day, o]))
+
+  const days = monthDays(year, month).map(day => {
+    const holiday = holidayByDay.get(day) ?? null
+    const occasion = occasionByDay.get(day) ?? null
+    const { working, reason } = resolveDuty({ scale, date: day, holiday, occasion })
+    const customHours = occasion?.startTime
+      ? { start: occasion.startTime.slice(0, 5), end: occasion.endTime.slice(0, 5) }
+      : null
+    return {
+      day,
+      weekDay: WEEK_DAYS[new Date(`${day}T00:00:00Z`).getUTCDay()],
+      working,
+      reason,
+      hours: working
+        ? (customHours ??
+          (shift ? { start: shift.shiftStart.slice(0, 5), end: shift.shiftEnd.slice(0, 5) } : null))
+        : null,
+      holiday: holiday?.name ?? null,
+      occasion: occasion ? { type: occasion.type, description: occasion.description } : null
+    }
+  })
+
+  return {
+    year,
+    month,
+    summary: {
+      workingDays: days.filter(d => d.working).length,
+      offDays: days.filter(d => !d.working).length,
+      occasions: occasions.length
+    },
+    days
+  }
+}
